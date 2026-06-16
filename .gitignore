@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# 环境与密钥(绝不入库)
+.env
+.env.*
+
+# 运行时数据
+data/
+logs/
+*.db
+
+# IDE / 系统
+.vscode/
+.idea/
+.DS_Store
