@@ -15,7 +15,7 @@
 
 ## 当前焦点
 
-**Phase 0 — 工程地基**　下一个单元：`P0-01 项目骨架`
+**Phase 0 — 工程地基**　下一个单元：`P0-1.5 基础设施契约蓝图`（先定底层契约，再进 P0-02）
 
 ---
 
@@ -23,25 +23,38 @@
 
 | ID | 单元 | 状态 | Commit |
 |----|------|------|--------|
-| P0-01 | 项目骨架 + git + .gitignore | ⬜ | — |
+| P0-01 | 项目骨架 + git + .gitignore | ✅ | #1 (09ebaa3) |
+| P0-1.5 | **基础设施契约蓝图（ADR-0001 + 蓝图文档）** | 🔨 | — |
 | P0-02 | 配置管理（pydantic-settings + fail-fast） | ⬜ | — |
 | P0-03 | content_hash（SHA-256 工具） | ⬜ | — |
-| P0-04 | 异常体系（core exceptions） | ⬜ | — |
-| P0-05 | 结构化日志（trace_id/tenant_id） | ⬜ | — |
-| P0-06 | Redis 连接单例（Lock + health check） | ⬜ | — |
+| P0-04 | 异常体系 + **异常→HTTP 映射表** | ⬜ | — |
+| P0-05 | 结构化日志（trace_id/tenant_id ContextVar） | ⬜ | — |
+| P0-06 | **BaseStore 抽象基类** + Redis 连接单例（三件套） | ⬜ | — |
 | P0-07 | 启动健康门禁（lifespan fail-fast） | ⬜ | — |
 | P0-08 | Phase 0 门禁脚本 + 验收 | ⬜ | — |
+| P0-09 | Docker 编排骨架（compose + service_healthy 依赖图） | ⬜ | — |
 
 ### P0-01 项目骨架 + git + .gitignore
 - **目标**：建立目录结构、git 仓库、依赖锁定文件骨架。
 - **DoD**：
-  - [ ] `git init`，main 分支
-  - [ ] `.gitignore` 排除 venv/data/logs/.env/__pycache__/*.pyc
-  - [ ] 目录骨架：`src/{core,infra,rag,agents,api,observability}/`、`tests/unit/`、`docs/{adr,_reference}/`
-  - [ ] `requirements.txt`（先空或仅基础依赖，精确锁定）
-  - [ ] 每个 package 有 `__init__.py`
-  - [ ] `python -c "import src.core"` 不报错
+  - [x] `git init`，main 分支
+  - [x] `.gitignore` 排除 venv/data/logs/.env/__pycache__/*.pyc
+  - [x] 目录骨架：`src/{core,infra,rag,agents,api,observability}/`、`tests/unit/`、`docs/{adr,_reference}/`
+  - [x] `requirements.txt`（先空或仅基础依赖，精确锁定）
+  - [x] 每个 package 有 `__init__.py`
+  - [x] `python -c "import src.core"` 不报错
 - **验证命令**：`python -c "import src.core, src.rag, src.agents, src.api"`
+- **完成**：PR #1 已 merge（09ebaa3，--no-ff via "Create a merge commit"）。
+
+### P0-1.5 基础设施契约蓝图
+- **目标**：在写功能代码前，统一定义底层接口契约（L0/L1/L4/L5），作为后续所有单元的「接口宪法」。对应诊断书「底层先稳，上层勿动」铁律。
+- **产出**：`docs/adr/0001-infrastructure-contracts.md`（十条决策）+ `docs/design/infra_blueprint.md`（契约详述）。
+- **DoD**：
+  - [ ] ADR-0001 记录十条核心决策（Context/Decision/Consequences）
+  - [ ] 蓝图覆盖 L0 配置 / L1 连接抽象+多租户+Docker+schema / L4 异常映射 / L5 可观测性
+  - [ ] 蓝图契约自洽（`BaseStore` 被 `TenantFilteredStore` 继承；ContextVar 被日志和多租户复用）
+  - [ ] 对照诊断书「认知红线 8 条」逐条堵死
+- **验证**：后续 P0-02 / P0-04 / P0-06 能照蓝图契约直接实现、无歧义；ADR-0001 登记进 ADR 索引。
 
 ### P0-02 配置管理
 - **目标**：单一配置源，启动校验关键 key（fail-fast）。
@@ -56,32 +69,34 @@
 - **目标**：跨进程一致的 SHA-256 哈希工具，替代 Python `hash()`。
 - **DoD**：
   - [ ] `src/core/hash.py` 暴露 `content_hash(text) -> str`
-  - [ ] **先写测试**：基本正确性 + 已知 SHA-256 值 + 跨进程一致性（subprocess 验证）
+  - [ ] **先写测试**：基本正确性 + 已知 SHA-256 哈希值 + 跨进程一致性（subprocess 验证）
   - [ ] 业务代码禁止直接 import hashlib（lint 卡，仅 hash.py 可用）
 - **验证**：`pytest tests/unit/core/test_hash.py -v`
 
-### P0-04 异常体系
-- **目标**：自定义异常层次，为后续"异常→HTTP 状态码映射表"打基础。
+### P0-04 异常体系 + HTTP 映射表
+- **目标**：自定义异常层次 + **全项目唯一的「异常→HTTP 状态码」映射表**。
 - **DoD**：
-  - [ ] `src/core/exceptions.py`：基类 + 业务子类（StorageError/RetrievalError/ValidationError/AuthError/QuotaExceeded 等）
-  - [ ] **先写测试**：继承关系、属性、可被捕获
+  - [ ] `src/core/exceptions.py`：基类 `RagError` + 业务子类（StorageError/RetrievalError/ValidationError/AuthError/QuotaExceeded/NotFoundError）
+  - [ ] **异常→HTTP 映射表**（见蓝图 L4）：StorageError→503、Validation→422、Auth→401/403、Quota→429、NotFound→404
+  - [ ] **先写测试**：继承关系、属性、映射表覆盖所有子类
 - **验证**：`pytest tests/unit/core/test_exceptions.py -v`
 
 ### P0-05 结构化日志
 - **目标**：JSON 日志，带 trace_id/tenant_id（ContextVar）。
 - **DoD**：
   - [ ] `src/observability/logger.py`：StructuredFormatter + get_logger
-  - [ ] trace_id_var / tenant_id_var（ContextVar）
+  - [ ] `trace_id_var` / `tenant_id_var`（ContextVar，**与多租户复用同一套**）
   - [ ] **先写测试**：日志含 trace_id/tenant_id 字段
 - **验证**：`pytest tests/unit/observability/test_logger.py -v`
 
-### P0-06 Redis 连接单例
-- **目标**：异步连接池单例，正确处理并发。
+### P0-06 BaseStore 抽象基类 + Redis 连接单例
+- **目标**：先建存储连接统一抽象，Redis 作为首个实现（蓝图 L1）。
 - **DoD**：
-  - [ ] `src/infra/redis.py`：连接池单例
-  - [ ] **用 `asyncio.Lock` 防 TOCTOU**（上次项目 Redis 漏锁的坑，这次必须做对）
+  - [ ] `src/core/base_store.py`：抽象基类 `BaseStore`（`health_check()` + 幂等 `close()`）
+  - [ ] `src/infra/redis.py`：`RedisStore(BaseStore)`，连接池单例
+  - [ ] **用 `asyncio.Lock` 防 TOCTOU**（上次 Redis 漏锁，本次必须做对）
   - [ ] health_check() + idempotent close()
-  - [ ] **先写测试**（用 fakeredis）：set/get、健康检查、单例
+  - [ ] **先写测试**（用 fakeredis）：set/get、健康检查、单例、锁正确性
 - **验证**：`pytest tests/unit/infra/test_redis.py -v`
 
 ### P0-07 启动健康门禁
@@ -99,6 +114,14 @@
   - [ ] 脚本退出码非 0 时**禁止**进 Phase 1
 - **验证**：`bash scripts/validate_p0.sh` 返回 0
 
+### P0-09 Docker 编排骨架
+- **目标**：按蓝图 L1 建本地基础设施编排（先 Redis，后续加 Milvus/Neo4j）。
+- **DoD**：
+  - [ ] `docker-compose.yml`：redis（带 healthcheck），app 依赖 redis 用 `condition: service_healthy`
+  - [ ] `.dockerignore` 严格（排除 db/data/logs/venv）
+  - [ ] **禁 `service_started` 兜底**（上次 neo4j 这一处坑）
+- **验证**：`docker compose up -d` 后 redis 健康、app 能连上
+
 ---
 
 ## Phase 1 — 走通骨架（walking skeleton，到时细化）
@@ -107,7 +130,7 @@
 
 | ID | 单元（草案） | 状态 |
 |----|------------|------|
-| P1-01 | Milvus 连接单例（复用 P0-06 的 Lock 模式） | ⬜ |
+| P1-01 | Milvus 连接单例 `MilvusStore(BaseStore)`（复用 P0-06 三件套） | ⬜ |
 | P1-02 | LLM 封装（LiteLLM，async，主备 fallback） | ⬜ |
 | P1-03 | Embedding（最小版 + Redis 缓存） | ⬜ |
 | P1-04 | 向量存储（Milvus insert + search，含 partition key） | ⬜ |
@@ -125,11 +148,11 @@
 - **Agent 编排**：Router → Worker → Reviewer（LangGraph）
 - **重排**：降级链（Cohere/BGE/Raw）
 - **记忆系统**：短期对话 + 长期记忆（Mem0 式提取/合并/检索）
-- **图谱检索**：Neo4j 实体关系
+- **图谱检索**：Neo4j 实体关系（`Neo4jStore(BaseStore)`，MERGE 幂等）
 - **接口层**：FastAPI + SSE 流式
 - **可观测性闭环**：/metrics 端点 + 采集 + 仪表盘
 - **测试金字塔 + CI 门禁**：真实集成测试入 CI
-- **多租户隔离**：双租户泄漏测试
+- **多租户隔离**：`TenantFilteredStore` + 双租户泄漏测试（覆盖三库）
 
 ---
 
@@ -139,7 +162,7 @@
 
 | ADR | 标题 | 状态 |
 |-----|------|------|
-| — | （待 Phase 1 选型时开始） | — |
+| ADR-0001 | 基础设施接口契约蓝图 | Accepted |
 
 ---
 
