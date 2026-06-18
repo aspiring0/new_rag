@@ -15,7 +15,7 @@
 
 ## 当前焦点
 
-**Phase 0 — 工程地基**　下一个单元：`P0-03 content_hash`（P0-02 配置管理已完成 ✅）
+**Phase 0 — 工程地基**　下一个单元：`P0-04 异常体系`（P0-03 content_hash 已完成 ✅）
 
 ---
 
@@ -24,9 +24,9 @@
 | ID | 单元 | 状态 | Commit |
 |----|------|------|--------|
 | P0-01 | 项目骨架 + git + .gitignore | ✅ | #1 (09ebaa3) |
-| P0-1.5 | **基础设施契约蓝图（ADR-0001 + 蓝图文档）** | ✅ | #2,(3bdcaec)|
-| P0-02 | 配置管理（pydantic-settings + fail-fast） | ✅ | #3 (待 merge) |
-| P0-03 | content_hash（SHA-256 工具） | ⬜ | — |
+| P0-1.5 | **基础设施契约蓝图（ADR-0001 + 蓝图文档）** | ✅ | #2 (3bdcaec) |
+| P0-02 | 配置管理（pydantic-settings + fail-fast） | ✅ | #3 (29132c8) |
+| P0-03 | content_hash（SHA-256 工具） | ✅ | #4 (待 merge) |
 | P0-04 | 异常体系 + **异常→HTTP 映射表** | ⬜ | — |
 | P0-05 | 结构化日志（trace_id/tenant_id ContextVar） | ⬜ | — |
 | P0-06 | **BaseStore 抽象基类** + Redis 连接单例（三件套） | ⬜ | — |
@@ -50,28 +50,31 @@
 - **目标**：在写功能代码前，统一定义底层接口契约（L0/L1/L4/L5），作为后续所有单元的「接口宪法」。对应诊断书「底层先稳，上层勿动」铁律。
 - **产出**：`docs/adr/0001-infrastructure-contracts.md`（十条决策）+ `docs/design/infra_blueprint.md`（契约详述）。
 - **DoD**：
-  - [ ] ADR-0001 记录十条核心决策（Context/Decision/Consequences）
-  - [ ] 蓝图覆盖 L0 配置 / L1 连接抽象+多租户+Docker+schema / L4 异常映射 / L5 可观测性
-  - [ ] 蓝图契约自洽（`BaseStore` 被 `TenantFilteredStore` 继承；ContextVar 被日志和多租户复用）
-  - [ ] 对照诊断书「认知红线 8 条」逐条堵死
+  - [x] ADR-0001 记录十条核心决策（Context/Decision/Consequences）
+  - [x] 蓝图覆盖 L0 配置 / L1 连接抽象+多租户+Docker+schema / L4 异常映射 / L5 可观测性
+  - [x] 蓝图契约自洽（`BaseStore` 被 `TenantFilteredStore` 继承；ContextVar 被日志和多租户复用）
+  - [x] 对照诊断书「认知红线 8 条」逐条堵死
 - **验证**：后续 P0-02 / P0-04 / P0-06 能照蓝图契约直接实现、无歧义；ADR-0001 登记进 ADR 索引。
+- **完成**：PR #2 已 merge（3bdcaec）。P0-02 已照蓝图 L0 契约落地，验证契约可执行。
 
 ### P0-02 配置管理
 - **目标**：单一配置源，启动校验关键 key（fail-fast）。
 - **DoD**：
-  - [ ] `src/core/config.py` 用 pydantic-settings，所有配置项集中
-  - [ ] 业务代码禁止 `os.getenv`（lint 卡）
-  - [ ] 关键 key（LLM/Embedding/Redis）缺失或弱默认值时，prod 拒启动（dev 放行）
-  - [ ] 先写测试：缺 key 抛特定异常；非法类型被拒
-- **验证**：`pytest tests/unit/core/test_config.py -v` + 故意删 key 看是否 fail-fast
+  - [x] `src/core/config.py` 用 pydantic-settings，所有配置项集中
+  - [x] 业务代码禁止 `os.getenv`（config.py 已遵守；lint 自动化 enforcement 待 CI 阶段补）
+  - [x] 关键 key（LLM/Embedding/Redis）缺失或弱默认值时，prod 拒启动（dev 放行）
+  - [x] 先写测试：缺 key 抛特定异常；非法类型被拒
+- **验证**：`pytest tests/unit/core/test_config.py -v`（8 passed）+ 手动验证（真实 .env：APP_ENV=prod 缺 key → ValidationError；dev → 正常）
+- **完成**：PR #3 已 merge（29132c8）。8 单元测试全绿 + fail-fast 手动验证通过；敏感字段 SecretStr 防 repr/日志泄露。
 
 ### P0-03 content_hash
 - **目标**：跨进程一致的 SHA-256 哈希工具，替代 Python `hash()`。
 - **DoD**：
-  - [ ] `src/core/hash.py` 暴露 `content_hash(text) -> str`
-  - [ ] **先写测试**：基本正确性 + 已知 SHA-256 哈希值 + 跨进程一致性（subprocess 验证）
-  - [ ] 业务代码禁止直接 import hashlib（lint 卡，仅 hash.py 可用）
-- **验证**：`pytest tests/unit/core/test_hash.py -v`
+  - [x] `src/core/hash.py` 暴露 `content_hash(text) -> str`
+  - [x] **先写测试**：基本正确性 + 已知 SHA-256 哈希值 + 跨进程一致性（subprocess 验证）
+  - [x] 业务代码禁止直接 import hashlib（hash.py 已遵守；lint 自动化 enforcement 待 CI 阶段补）
+- **验证**：`pytest tests/unit/core/test_hash.py -v`（5 passed，含跨进程一致性测试）
+- **完成**：PR #4（待 merge）。5 单元测试全绿；hash.py 是全项目唯一 import hashlib 处。
 
 ### P0-04 异常体系 + HTTP 映射表
 - **目标**：自定义异常层次 + **全项目唯一的「异常→HTTP 状态码」映射表**。
