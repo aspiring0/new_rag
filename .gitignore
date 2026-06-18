@@ -15,6 +15,9 @@ data/
 logs/
 *.db
 
+# 学习笔记（私人，不入库）
+notes/
+
 # IDE / 系统
 .vscode/
 .idea/
