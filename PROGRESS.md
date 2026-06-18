@@ -15,7 +15,7 @@
 
 ## 当前焦点
 
-**Phase 0 — 工程地基**　下一个单元：`P0-1.5 基础设施契约蓝图`（先定底层契约，再进 P0-02）
+**Phase 0 — 工程地基**　下一个单元：`P0-03 content_hash`（P0-02 配置管理已完成 ✅）
 
 ---
 
@@ -24,8 +24,8 @@
 | ID | 单元 | 状态 | Commit |
 |----|------|------|--------|
 | P0-01 | 项目骨架 + git + .gitignore | ✅ | #1 (09ebaa3) |
-| P0-1.5 | **基础设施契约蓝图（ADR-0001 + 蓝图文档）** | 🔨 | — |
-| P0-02 | 配置管理（pydantic-settings + fail-fast） | ⬜ | — |
+| P0-1.5 | **基础设施契约蓝图（ADR-0001 + 蓝图文档）** | ✅ | #2,(3bdcaec)|
+| P0-02 | 配置管理（pydantic-settings + fail-fast） | ✅ | #3 (待 merge) |
 | P0-03 | content_hash（SHA-256 工具） | ⬜ | — |
 | P0-04 | 异常体系 + **异常→HTTP 映射表** | ⬜ | — |
 | P0-05 | 结构化日志（trace_id/tenant_id ContextVar） | ⬜ | — |
