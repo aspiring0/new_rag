@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+# 把项目根加入 sys.path，让 `import src` 在任何运行方式下都生效
+# （直接 pytest / python -m pytest / IDE / CI 全统一）。
+# 修 P0-01 遗留缺口：此前只能靠 `python -m pytest` 跑（它会把 cwd 加进 path）。
+pythonpath = ["."]
