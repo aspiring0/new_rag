@@ -27,7 +27,7 @@
 | P0-1.5 | **基础设施契约蓝图（ADR-0001 + 蓝图文档）** | ✅ | #2 (3bdcaec) |
 | P0-02 | 配置管理（pydantic-settings + fail-fast） | ✅ | #3 (29132c8) |
 | P0-03 | content_hash（SHA-256 工具） | ✅ | #4 (待 merge) |
-| P0-04 | 异常体系 + **异常→HTTP 映射表** | ⬜ | — |
+| P0-04 | 异常体系 + **异常→HTTP 映射表** | ✅ | #5 (9966ac8) |
 | P0-05 | 结构化日志（trace_id/tenant_id ContextVar） | ⬜ | — |
 | P0-06 | **BaseStore 抽象基类** + Redis 连接单例（三件套） | ⬜ | — |
 | P0-07 | 启动健康门禁（lifespan fail-fast） | ⬜ | — |
@@ -79,10 +79,11 @@
 ### P0-04 异常体系 + HTTP 映射表
 - **目标**：自定义异常层次 + **全项目唯一的「异常→HTTP 状态码」映射表**。
 - **DoD**：
-  - [ ] `src/core/exceptions.py`：基类 `RagError` + 业务子类（StorageError/RetrievalError/ValidationError/AuthError/QuotaExceeded/NotFoundError）
-  - [ ] **异常→HTTP 映射表**（见蓝图 L4）：StorageError→503、Validation→422、Auth→401/403、Quota→429、NotFound→404
-  - [ ] **先写测试**：继承关系、属性、映射表覆盖所有子类
-- **验证**：`pytest tests/unit/core/test_exceptions.py -v`
+  - [x] `src/core/exceptions.py`：基类 `RagError` + 业务子类（StorageError/RetrievalError/ValidationError/AuthError/QuotaExceeded/NotFoundError）
+  - [x] **异常→HTTP 映射表**（见蓝图 L4）：StorageError→503、Validation→422、Auth→401/403、Quota→429、NotFound→404
+  - [x] **先写测试**：继承关系、属性、映射表覆盖所有子类
+- **验证**：`pytest tests/unit/core/ -q` → 34 passed（test_exceptions 21 + config 8 + hash 5）
+- **完成**：PR #5（9966ac8，--no-ff）。21 单元测试全绿（映射表/继承/属性/捕获）。实际实现 7 个子类（DoD 原列 6 个 + `PermissionDeniedError` 补充，用于区分 401 未认证 / 403 越权）。附带修复 P0-01 遗留的 pytest import 路径缺口（`pyproject.toml pythonpath`，详见 chore commit 7ecfe6c）。
 
 ### P0-05 结构化日志
 - **目标**：JSON 日志，带 trace_id/tenant_id（ContextVar）。
